@@ -7,8 +7,8 @@ from oauth2client.service_account import ServiceAccountCredentials
 # 🔑 CONFIG
 # =========================
 
-KEY = "YOUR_NST_KEY"
-SHEET_NAME = "YOUR_GOOGLE_SHEET_NAME"
+KEY = "38f3ae4f013496ded18e75b7f9c49ae9"
+SHEET_NAME = "NHL Vercel"
 
 # =========================
 # 🗺️ TEAM NAME MAP
