@@ -19,7 +19,12 @@ TEAM_MAP = {
     "New York": "New York Rangers",
     "Vegas": "Vegas Golden Knights",
     "Los Angeles": "Los Angeles Kings",
-    "New Jersey": "New Jersey Devils"
+    "New Jersey": "New Jersey Devils",
+    "Montreal": "Montreal Canadians",
+    "Tampa Bay": "Tampa Bay Lightning",
+    "Buffalo": "Buffalo Sabres",
+    "Utah": "Utah Mammoth",
+    "Colorado": "Colorado Avalanche"
     # add more as needed
 }
 
@@ -38,7 +43,7 @@ def connect_sheet():
     )
 
     client = gspread.authorize(creds)
-    return client.open(SHEET_NAME)
+    return client.open_by_url("https://docs.google.com/spreadsheets/d/1aAmugvWUMDxw9J7jp4zcB4ccUZxPmeRAZOfcFmDSnwI/edit?gid=0#gid=0")
 
 
 def push_to_sheet(df, tab_name):
