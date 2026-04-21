@@ -15,11 +15,11 @@ SHEET_NAME = "NHL Vercel"
 # =========================
 
 TEAM_MAP = {
-    "Boston Bruins": "Boston Bruins",
-    "New York Rangers": "New York Rangers",
-    "Vegas Golden Knights": "Vegas Golden Knights",
-    "Los Angeles Kings": "Los Angeles Kings",
-    "New Jersey Devils": "New Jersey Devils"
+    "Boston": "Boston Bruins",
+    "New York": "New York Rangers",
+    "Vegas": "Vegas Golden Knights",
+    "Los Angeles": "Los Angeles Kings",
+    "New Jersey": "New Jersey Devils"
     # add more as needed
 }
 
