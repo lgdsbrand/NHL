@@ -1,11 +1,56 @@
 import pandas as pd
 import requests
-
-KEY = "38f3ae4f013496ded18e75b7f9c49ae9"
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
 
 # =========================
-# 🏒 1. ESPN GAMES
+# 🔑 CONFIG
 # =========================
+
+KEY = "YOUR_NST_KEY"
+SHEET_NAME = "YOUR_GOOGLE_SHEET_NAME"
+
+# =========================
+# 🗺️ TEAM NAME MAP
+# =========================
+
+TEAM_MAP = {
+    "Boston Bruins": "Boston Bruins",
+    "New York Rangers": "New York Rangers",
+    "Vegas Golden Knights": "Vegas Golden Knights",
+    "Los Angeles Kings": "Los Angeles Kings",
+    "New Jersey Devils": "New Jersey Devils"
+    # add more as needed
+}
+
+# =========================
+# 🔗 GOOGLE SHEETS CONNECT
+# =========================
+
+def connect_sheet():
+    scope = [
+        "https://spreadsheets.google.com/feeds",
+        "https://www.googleapis.com/auth/drive"
+    ]
+
+    creds = ServiceAccountCredentials.from_json_keyfile_name(
+        "credentials.json", scope
+    )
+
+    client = gspread.authorize(creds)
+    return client.open(SHEET_NAME)
+
+
+def push_to_sheet(df, tab_name):
+    sheet = connect_sheet().worksheet(tab_name)
+    sheet.clear()
+    sheet.update([df.columns.values.tolist()] + df.values.tolist())
+
+
+# =========================
+# 🏒 ESPN GAMES
+# =========================
+
 def get_games():
     url = "https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/scoreboard"
     data = requests.get(url).json()
@@ -18,9 +63,19 @@ def get_games():
         home = [t for t in comp if t["homeAway"] == "home"][0]
         away = [t for t in comp if t["homeAway"] == "away"][0]
 
+        away_team = TEAM_MAP.get(
+            away["team"]["displayName"],
+            away["team"]["displayName"]
+        )
+
+        home_team = TEAM_MAP.get(
+            home["team"]["displayName"],
+            home["team"]["displayName"]
+        )
+
         games.append({
-            "away_team": away["team"]["displayName"],
-            "home_team": home["team"]["displayName"],
+            "away_team": away_team,
+            "home_team": home_team,
             "time": event["date"]
         })
 
@@ -28,9 +83,10 @@ def get_games():
 
 
 # =========================
-# 📊 2. NST TEAM STATS
+# 📊 NST TEAM STATS
 # =========================
-def get_nst_team_stats():
+
+def get_team_stats():
     url = (
         "https://data.naturalstattrick.com/teamtable.php?"
         f"sit=5v5&score=all&rate=y&team=all&loc=B&key={KEY}"
@@ -45,8 +101,9 @@ def get_nst_team_stats():
 
 
 # =========================
-# 🥅 3. NST GOALIE STATS
+# 🥅 NST GOALIES
 # =========================
+
 def get_goalies():
     url = (
         "https://data.naturalstattrick.com/goalietable.php?"
@@ -65,8 +122,9 @@ def get_goalies():
 
 
 # =========================
-# 🏆 4. NST STANDINGS
+# 🏆 STANDINGS
 # =========================
+
 def get_standings():
     url = (
         "https://data.naturalstattrick.com/teamtable.php?"
@@ -77,20 +135,20 @@ def get_standings():
     df.columns = df.columns.droplevel(0) if isinstance(df.columns, pd.MultiIndex) else df.columns
 
     return df[[
-        "Team", "GP", "W", "L", "PTS%"
+        "Team", "PTS%"
     ]].rename(columns={"Team": "team"})
 
 
 # =========================
-# 🔗 5. BUILD MATCHUPS
+# 🔗 BUILD MATCHUPS
 # =========================
-def build_games_table():
+
+def build_games():
     games = get_games()
-    teams = get_nst_team_stats()
+    stats = get_team_stats()
     standings = get_standings()
 
-    # Merge team stats
-    df = games.merge(teams, left_on="away_team", right_on="team", how="left")
+    df = games.merge(stats, left_on="away_team", right_on="team", how="left")
     df = df.rename(columns={
         "GF/60": "away_GF60",
         "GA/60": "away_GA60",
@@ -98,7 +156,7 @@ def build_games_table():
         "xGA/60": "away_xGA60"
     }).drop(columns=["team"])
 
-    df = df.merge(teams, left_on="home_team", right_on="team", how="left")
+    df = df.merge(stats, left_on="home_team", right_on="team", how="left")
     df = df.rename(columns={
         "GF/60": "home_GF60",
         "GA/60": "home_GA60",
@@ -106,29 +164,24 @@ def build_games_table():
         "xGA/60": "home_xGA60"
     }).drop(columns=["team"])
 
-    # Merge standings (power ranking base)
     df = df.merge(standings, left_on="away_team", right_on="team", how="left")
-    df = df.rename(columns={"PTS%": "away_pts_pct"}).drop(columns=["team", "GP", "W", "L"])
+    df = df.rename(columns={"PTS%": "away_pts_pct"}).drop(columns=["team"])
 
     df = df.merge(standings, left_on="home_team", right_on="team", how="left")
-    df = df.rename(columns={"PTS%": "home_pts_pct"}).drop(columns=["team", "GP", "W", "L"])
+    df = df.rename(columns={"PTS%": "home_pts_pct"}).drop(columns=["team"])
 
     return df
 
 
 # =========================
-# 🚀 RUN
+# 🚀 RUN PIPELINE
 # =========================
 
-df_games = build_games_table()
+df_games = build_games()
 df_goalies = get_goalies()
 
-# Save outputs
-df_games.to_csv("nhl_games.csv", index=False)
-df_goalies.to_csv("nhl_goalies.csv", index=False)
+# Push to Google Sheets
+push_to_sheet(df_games, "Games")
+push_to_sheet(df_goalies, "Goalies")
 
-print("Games:")
-print(df_games.head())
-
-print("\nGoalies:")
-print(df_goalies.head())
+print("✅ Data pushed to Google Sheets")
